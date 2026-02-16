@@ -5,8 +5,8 @@ export type CartItem = {
   productId: string;
   name: string;
   imageUrl?: string | null;
-  unitCents: number;
-  priceCents: number; // Tambahkan ini agar sinkron dengan database
+  // Hapus unitCents biar gak double/bingung
+  priceCents: number; 
   qty: number;
   category: string;
 };
@@ -42,7 +42,8 @@ export const useCart = create<CartState>()(
           items: s.items.map((x) => (x.productId === productId ? { ...x, qty: Math.max(1, qty) } : x)),
         })),
       clear: () => set({ items: [] }),
-      totalCents: () => get().items.reduce((acc, x) => acc + x.unitCents * x.qty, 0),
+      // Update: Ganti unitCents jadi priceCents di kalkulasi total
+      totalCents: () => get().items.reduce((acc, x) => acc + x.priceCents * x.qty, 0),
     }),
     { name: "pinkblossom_cart_v1" }
   )

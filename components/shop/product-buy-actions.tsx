@@ -42,7 +42,7 @@ export default function ProductBuyActions({
         productId: product.id,
         name: product.name,
         imageUrl: product.imageUrl,
-        unitCents: product.priceCents,
+        priceCents: product.priceCents,
         category: product.category,
       },
       qty
