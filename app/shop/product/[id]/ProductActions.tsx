@@ -20,13 +20,13 @@ export default function ProductActions({ product }: { product: any }) {
     setIsAdding(true);
 
     // FIX: Sertakan unitCents DAN priceCents agar sesuai dengan interface CartItem
+    // FIX: Hanya gunakan priceCents sesuai dengan interface CartItem yang baru
     add({
       productId: product.id,
       name: product.name,
       category: product.category,
       imageUrl: product.imageUrl,
-      unitCents: product.priceCents,  // Untuk hitungan di store
-      priceCents: product.priceCents, // Properti yang diminta interface (TypeScript Fix)
+      priceCents: product.priceCents, // Satu-satunya properti harga yang kita pakai sekarang
     }, 1);
 
     setTimeout(() => {
