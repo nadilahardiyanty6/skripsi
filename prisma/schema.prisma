@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
+model Profile {
+  id         String   @id @db.Uuid
+  email      String   @unique
+  fullName   String?
+  phoneE164  String?
+  role       Role     @default(USER)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  orders     Order[]
+}
+
+model Product {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  category    String
+  imageUrl    String?
+  priceCents  Int
+  weightGram  Int         @default(500) // Default 500gr buat hitung ongkir Komerce
+  stock       Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  userId          String      @db.Uuid
+  status          OrderStatus @default(PENDING)
+  trackingUrl     String?
+  itemsJson       Json
+  totalCents      Int         // Nilai akhir: (Subtotal Produk + shippingCents)
+  shippingCents   Int         @default(0) // Record biaya ongkir dari Komerce
+  idempotencyKey  String?     @unique
+  
+  // Detail Alamat & Pembayaran
+  shippingAddress Json?       // Simpan: Nama, Kota, Kecamatan, Alamat Lengkap, Kurir
+  paymentBank     String?     
+  paymentProofUrl String?     
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relasi
+  user            Profile     @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+  finance         FinanceRecord?
+}
+
+model OrderItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  productId String   @db.Uuid
+  qty       Int
+  unitCents Int
+  createdAt DateTime @default(now())
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model FinanceRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  orderId     String   @unique @db.Uuid
+  type        String   // "REVENUE" | "REFUND"
+  amountCents Int
+  note        String?
+  createdAt   DateTime @default(now())
+
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
