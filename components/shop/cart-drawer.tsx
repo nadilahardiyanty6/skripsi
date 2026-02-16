@@ -57,7 +57,7 @@ export default function CartDrawer({ open, onClose }: { open: boolean; onClose: 
                           <div className="truncate font-semibold">{x.name}</div>
                           <div className="mt-1 text-xs text-black/50">{x.category}</div>
                           <div className="mt-2 text-sm font-semibold text-[#FF85A2]">
-                            {money(x.unitCents)}
+                            {money(x.priceCents)}
                           </div>
                         </div>
 
@@ -87,7 +87,7 @@ export default function CartDrawer({ open, onClose }: { open: boolean; onClose: 
                         </div>
 
                         <div className="text-sm font-semibold">
-                          {money(x.unitCents * x.qty)}
+                          {money(x.priceCents * x.qty)}
                         </div>
                       </div>
                     </div>
