@@ -1,40 +1,19 @@
-"use client";
-
 import "./globals.css";
-import Navbar from "@/components/layout/navbar";
 import { Inter, Playfair_Display } from "next/font/google";
-import { usePathname } from "next/navigation";
+import NavbarWrapper from "@/components/layout/NavbarWrapper";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair", display: "swap" });
 
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-});
-
+// Root Layout SEKARANG ADALAH SERVER COMPONENT (Tanpa "use client")
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  // NAVBAR HANYA MUNCUL JIKA BUKAN DI HALAMAN LANDING (/)
-  // Jadi pas di Linktree, layar bener-bener bersih cuma ada tombol link doang.
-  const isHomePage = pathname === "/";
-
   return (
     <html lang="id" className={`${inter.variable} ${playfair.variable}`}>
       <body className="antialiased selection:bg-[#FF85A2]/30">
-        
-        {/* Navbar otomatis ilang kalo pathname-nya cuma "/" */}
-        {!isHomePage && <Navbar />}
-
-        <div className={!isHomePage ? "min-h-[calc(100vh-64px)]" : "min-h-screen"}>
+        {/* Pindahkan logika pengecekan "/" ke dalam sini */}
+        <NavbarWrapper>
           {children}
-        </div>
-
+        </NavbarWrapper>
       </body>
     </html>
   );
