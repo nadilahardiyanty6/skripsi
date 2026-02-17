@@ -1,97 +1,106 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import ProductActions from "./ProductActions";
+import ProductVisuals from "./ProductVisuals";
+import { ShieldCheck } from "lucide-react";
 
-// Fungsi format harga (Sisi Server)
 const formatPrice = (cents: number) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
+  return new Intl.NumberFormat("id-ID", { 
+    style: "currency", 
+    currency: "IDR", 
+    minimumFractionDigits: 0 
   }).format(cents / 100);
 };
 
-export default async function ProductDetail({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
+export default async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
-  const product = await prisma.product.findUnique({
-    where: { id: id },
-  });
+  const product = await prisma.product.findUnique({ where: { id: id } });
 
   if (!product) notFound();
 
-  // Parsing data stok per ukuran dari description
-  let sizeData = {};
-  try {
-    const jsonMatch = product.description?.match(/\{.*\}/);
-    if (jsonMatch) {
-      sizeData = JSON.parse(jsonMatch[0]);
+  const rawDescription = product.description || "";
+  
+  // --- 1. PARSING MULTI-IMAGES (PAKAI SPLIT) ---
+  let images: string[] = [];
+  if (rawDescription.includes("|IMAGES|")) {
+    const parts = rawDescription.split("|IMAGES|");
+    try {
+      // parts[1] adalah string JSON array di antara pemisah
+      images = JSON.parse(parts[1]);
+    } catch (e) {
+      images = [product.imageUrl].filter(Boolean) as string[];
     }
-  } catch (e) {
-    sizeData = {};
+  } else {
+    // Fallback kalau produk lama belum punya multi-image
+    images = [product.imageUrl].filter(Boolean) as string[];
   }
 
-  // Bersihkan teks deskripsi dari JSON
-  const cleanDescription = product.description?.replace(/\{.*\}/, "").trim();
+  // --- 2. PARSING SIZE DATA (PAKAI SPLIT) ---
+  let sizeData = {};
+  if (rawDescription.includes("|SIZES|")) {
+    const parts = rawDescription.split("|SIZES|");
+    try {
+      sizeData = JSON.parse(parts[1]);
+    } catch (e) {
+      sizeData = {};
+    }
+  }
+
+  // --- 3. BERSIHKAN DESKRIPSI DARI SEMUA TAG ---
+  // Ambil teks paling depan sebelum ada tanda pemisah apa pun
+  const cleanDescription = rawDescription
+    .split("|IMAGES|")[0]
+    .split("|SIZES|")[0]
+    .trim();
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-16">
-      <div className="grid gap-16 lg:grid-cols-2">
-        {/* Kolom Kiri: Gambar Produk */}
-        <div className="relative aspect-[3/4] overflow-hidden rounded-[3rem] border border-pink-50 bg-white shadow-2xl">
-          {product.imageUrl ? (
-            <Image 
-              src={product.imageUrl} 
-              alt={product.name} 
-              fill 
-              className="object-cover" 
-              priority 
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center bg-pink-50 text-pink-300 italic">
-              No Image Available
-            </div>
-          )}
-        </div>
+    <main className="mx-auto max-w-7xl px-6 py-12 md:py-20 font-sans min-h-screen bg-[#FFF9FA]">
+      <div className="grid gap-12 lg:grid-cols-2 items-start">
+        
+        {/* KOLOM KIRI: Visual Produk (Sekarang images sudah jadi Array URL) */}
+        <ProductVisuals images={images} alt={product.name} />
 
-        {/* Kolom Kanan: Detail */}
-        <div className="flex flex-col py-4">
-          <nav className="mb-6 flex gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-pink-400">
-            <Link href="/shop" className="hover:text-pink-600 transition-colors">Shop</Link>
-            <span>/</span>
-            <span>{product.category}</span>
+        {/* KOLOM KANAN: Informasi Produk */}
+        <div className="flex flex-col lg:pl-10">
+          <nav className="mb-8 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
+            <Link href="/shop" className="hover:text-[#FF85A2] transition-colors">Koleksi</Link>
+            <span className="h-1 w-1 rounded-full bg-gray-200"></span>
+            <span className="italic">{product.category}</span>
           </nav>
 
-          <h1 className="text-5xl font-black text-[#4A0E1C] italic leading-tight">
+          <h1 className="text-5xl md:text-6xl font-black text-[#4A0E1C] italic leading-tight tracking-tighter mb-4">
             {product.name}
           </h1>
-          <p className="mt-6 text-3xl font-black text-[#FF85A2] italic">
-            {formatPrice(product.priceCents)}
-          </p>
 
-          <div className="mt-10 border-t border-pink-50 pt-8">
-            <h3 className="text-xs font-black uppercase tracking-widest text-[#4A0E1C]/40 mb-3 underline decoration-pink-200 underline-offset-8">
-              Detail Koleksi
-            </h3>
-            <p className="text-lg leading-relaxed text-gray-600 font-medium italic">
-              {cleanDescription || "Produk eksklusif dari Pink Blossom Boutique Karawang."}
+          <div className="inline-flex self-start px-6 py-2 rounded-2xl bg-white shadow-sm border border-pink-50/50 mb-12">
+            <p className="text-3xl font-black text-[#FF85A2] italic tracking-tighter">
+              {formatPrice(product.priceCents)}
             </p>
           </div>
 
-          {/* Komponen Client (Ukuran & Keranjang) */}
-          <ProductActions 
-            product={{ ...product, sizeData }} 
-          />
-          
-          <div className="mt-12 flex items-center gap-3 rounded-2xl bg-gray-50 p-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-             <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
-             Tersedia Pengiriman ke Seluruh Indonesia
+          <div className="space-y-10">
+            <section>
+              <h3 className="text-xs font-black uppercase tracking-widest text-[#4A0E1C] mb-4">
+                Deskripsi
+              </h3>
+              <p className="text-lg leading-relaxed text-gray-600 font-medium italic opacity-80">
+                {cleanDescription || "Koleksi eksklusif dari Lia Butik Binuang Karawang."}
+              </p>
+            </section>
+
+            {/* Tombol Aksi & Pilih Size */}
+            <ProductActions product={{ ...product, sizeData }} />
+
+            <div className="flex items-center gap-4 p-6 rounded-[2.5rem] bg-white border border-pink-50 shadow-sm transition-all hover:shadow-md">
+               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFF9FA] text-[#FF85A2]">
+                 <ShieldCheck size={24} />
+               </div>
+               <div className="flex-1">
+                 <p className="text-[10px] font-black uppercase tracking-widest text-[#4A0E1C]">Jaminan Kualitas</p>
+                 <p className="text-xs font-medium italic text-gray-400">Produk Original Lia Butik Binuang</p>
+               </div>
+            </div>
           </div>
         </div>
       </div>

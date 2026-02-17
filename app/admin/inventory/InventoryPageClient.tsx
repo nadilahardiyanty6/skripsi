@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { 
   Plus, Shirt, Search, MinusCircle, PlusCircle, Loader2, 
-  Image as ImageIcon, CheckCircle2, AlignLeft, PackageSearch, Trash2 
+  Image as ImageIcon, AlignLeft, PackageSearch, Trash2, X,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { createProduct, updateProductStock, deleteProduct } from "./actions";
 import { createSupabaseBrowser } from "@/lib/supabase/browser"; 
 import { Toaster, toast } from "sonner";
 
-// PERBAIKAN: Tipe data imageUrl dan description harus string | null agar cocok dengan Prisma
 interface Product {
   id: string;
   name: string;
@@ -24,10 +24,12 @@ interface Product {
 export default function InventoryPageClient({ initialProducts = [] }: { initialProducts: Product[] }) {
   const [isSaving, setIsSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [finalImageUrl, setFinalImageUrl] = useState<string | null>(null);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [finalImageUrls, setFinalImageUrls] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
   const [sizeStockMap, setSizeStockMap] = useState<Record<string, number>>({
     XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0
@@ -41,31 +43,29 @@ export default function InventoryPageClient({ initialProducts = [] }: { initialP
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setUploading(true);
-    setImagePreview(URL.createObjectURL(file));
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `products/${fileName}`;
+    const newPreviews = Array.from(files).map(file => URL.createObjectURL(file));
+    setImagePreviews(prev => [...prev, ...newPreviews]);
 
     try {
-      // Bucket 'baju' harus PUBLIC di Supabase Storage
-      const { data, error: uploadError } = await supabase.storage
-        .from('baju') 
-        .upload(filePath, file);
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+        const { error: uploadError } = await supabase.storage.from('baju').upload(filePath, file);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from('baju').getPublicUrl(filePath);
+        return urlData.publicUrl;
+      });
 
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('baju').getPublicUrl(filePath);
-      setFinalImageUrl(urlData.publicUrl);
-      toast.success("Foto katalog berhasil diupload!");
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setFinalImageUrls(prev => [...prev, ...uploadedUrls]);
+      toast.success("Foto berhasil diupload!");
     } catch (error: any) {
-      console.error("UPLOAD_ERROR_LOG:", error);
-      toast.error("Gagal upload ke bucket 'baju': " + (error.message || "Cek kebijakan Storage"));
-      setImagePreview(null);
+      toast.error("Upload gagal!");
     } finally {
       setUploading(false);
     }
@@ -73,61 +73,51 @@ export default function InventoryPageClient({ initialProducts = [] }: { initialP
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!finalImageUrl) return toast.warning("Waduh Mi, tunggu upload foto selesai dulu!");
-    
+    if (finalImageUrls.length === 0) return toast.warning("Upload foto dulu!");
     setIsSaving(true);
     const formData = new FormData(e.currentTarget);
-    formData.set("imageUrl", finalImageUrl);
-    formData.set("sizeStockMap", JSON.stringify(sizeStockMap));
+    const combinedData = `${formData.get("description")} |IMAGES|${JSON.stringify(finalImageUrls)}|IMAGES| |SIZES|${JSON.stringify(sizeStockMap)}|SIZES|`;
+    formData.set("description", combinedData);
+    formData.set("imageUrl", finalImageUrls[0]);
 
     const result = await createProduct(formData);
     if (result.success) {
-      toast.success("Koleksi butik berhasil diposting!");
-      e.currentTarget.reset();
-      setImagePreview(null);
-      setFinalImageUrl(null);
+      toast.success("Koleksi berhasil diposting!");
+      setImagePreviews([]);
+      setFinalImageUrls([]);
       setSizeStockMap({ XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0 });
-    } else {
-      toast.error("Gagal menyimpan ke database.");
+      e.currentTarget.reset();
     }
     setIsSaving(false);
-  };
-
-  const handleDelete = async (id: string, name: string) => {
-    if (confirm(`Yakin mau hapus "${name}" dari katalog?`)) {
-      const result = await deleteProduct(id);
-      if (result.success) {
-        toast.success("Produk berhasil dihapus");
-      } else {
-        toast.error("Gagal menghapus produk");
-      }
-    }
   };
 
   const filteredProducts = initialProducts.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const currentItems = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
-    <div className="max-w-7xl mx-auto space-y-12 pb-20 font-sans p-4 md:p-8">
+    <div className="max-w-7xl mx-auto space-y-8 pb-28 font-sans p-2 md:p-8">
       <Toaster position="top-center" richColors />
 
-      {/* FORM INPUT KOLEKSI */}
-      <div className="bg-white p-6 md:p-10 rounded-[3rem] shadow-xl border border-pink-50">
-        <h2 className="text-2xl font-black text-[#FF85A2] italic mb-10 flex items-center gap-3 underline decoration-pink-100 underline-offset-8">
-          <Plus className="bg-[#FFF0F3] rounded-2xl p-2 text-[#FF85A2]" size={40} /> ADD NEW ITEM
+      {/* FORM SECTION - Optimized for Mobile */}
+      <div className="bg-white p-5 md:p-10 rounded-[2.5rem] md:rounded-[3rem] shadow-xl border border-pink-50">
+        <h2 className="text-xl md:text-2xl font-black text-[#FF85A2] italic mb-6 md:mb-10 flex items-center gap-3 uppercase tracking-tighter">
+           Add New Item
         </h2>
         
-        <form onSubmit={handleSave} className="grid gap-10 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-gray-400 ml-3 tracking-widest">Nama Baju</label>
-                <input name="name" required placeholder="Silk Floral Dress" className="w-full rounded-2xl bg-[#FDF8F9] p-4 shadow-inner outline-none focus:ring-2 focus:ring-[#FF85A2] font-bold" />
+        <form onSubmit={handleSave} className="flex flex-col lg:grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-5 md:space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest leading-none">Nama Baju</label>
+                <input name="name" required className="w-full rounded-2xl bg-[#FDF8F9] p-4 shadow-inner outline-none focus:ring-2 focus:ring-[#FF85A2] font-bold text-sm" />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-gray-400 ml-3 tracking-widest">Kategori</label>
-                <select name="category" className="w-full rounded-2xl bg-[#FDF8F9] p-4 shadow-inner outline-none font-bold text-gray-500">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Kategori</label>
+                <select name="category" className="w-full rounded-2xl bg-[#FDF8F9] p-4 shadow-inner outline-none font-bold text-gray-500 text-sm">
                   <option value="Dress">Dress</option>
                   <option value="Atasan">Atasan</option>
                   <option value="Bawahan">Bawahan</option>
@@ -136,18 +126,18 @@ export default function InventoryPageClient({ initialProducts = [] }: { initialP
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-gray-400 ml-3 tracking-widest flex items-center gap-2"><AlignLeft size={14} /> Deskripsi Detail</label>
-              <textarea name="description" placeholder="Bahan, instruksi pencucian, dll..." rows={3} className="w-full rounded-2xl bg-[#FDF8F9] p-4 shadow-inner outline-none focus:ring-2 focus:ring-[#FF85A2] text-sm"></textarea>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Deskripsi</label>
+              <textarea name="description" rows={3} className="w-full rounded-2xl bg-[#FDF8F9] p-4 shadow-inner outline-none focus:ring-2 focus:ring-[#FF85A2] text-sm font-medium"></textarea>
             </div>
 
-            <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase text-gray-400 flex items-center gap-2 tracking-widest">
-                <PackageSearch size={14} /> Stok Per Ukuran
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase text-gray-400 flex items-center gap-2 tracking-widest ml-2">
+                <PackageSearch size={14} /> Atur Stok Size
               </label>
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 md:gap-3">
                 {sizes.map(size => (
-                  <div key={size}>
+                  <div key={size} className="flex flex-col">
                     <div className={`text-[9px] font-black text-center py-1 rounded-t-xl ${sizeStockMap[size] > 0 ? 'bg-[#FF85A2] text-white' : 'bg-gray-100 text-gray-400'}`}>{size}</div>
                     <input type="number" min="0" value={sizeStockMap[size]} onChange={(e) => handleSizeStockChange(size, e.target.value)} className="w-full text-center rounded-b-xl bg-[#FDF8F9] p-2 text-xs font-black shadow-inner outline-none" />
                   </div>
@@ -155,80 +145,117 @@ export default function InventoryPageClient({ initialProducts = [] }: { initialP
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-gray-400 ml-3 tracking-widest">Harga Jual (Rp)</label>
-              <input name="price" type="number" required placeholder="Contoh: 250000" className="w-full rounded-2xl bg-[#FDF8F9] p-4 shadow-inner outline-none font-black text-lg text-[#FF85A2]" />
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-gray-400 ml-2 tracking-widest">Harga Jual (Rp)</label>
+              <input name="price" type="number" required placeholder="250000" className="w-full rounded-2xl bg-[#FDF8F9] p-4 shadow-inner outline-none font-black text-lg text-[#FF85A2]" />
             </div>
           </div>
 
-          <div className="space-y-6 text-center">
-            <div className="relative aspect-[3/4] rounded-[2.5rem] bg-[#FFF0F3] border-2 border-dashed border-[#FFB7C5] overflow-hidden flex items-center justify-center shadow-inner group transition-all hover:bg-white cursor-pointer">
-              {imagePreview ? <img src={imagePreview} className="h-full w-full object-cover" /> : (
-                <div className="opacity-40">
-                  <ImageIcon className="mx-auto text-[#FF85A2] mb-2" size={48} />
-                  <p className="text-[9px] font-black text-[#FF85A2] uppercase tracking-widest">Portrait Foto</p>
+          {/* PHOTO SECTION - Grid view on mobile */}
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-2">
+              {imagePreviews.map((src, index) => (
+                <div key={index} className="relative aspect-[3/4] rounded-2xl overflow-hidden border-2 border-pink-100 group shadow-sm">
+                  <img src={src} className="h-full w-full object-cover" alt="preview" />
+                  <button type="button" onClick={() => {
+                    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+                    setFinalImageUrls(prev => prev.filter((_, i) => i !== index));
+                  }} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg"><X size={12} /></button>
                 </div>
-              )}
-              <input type="file" accept="image/*" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-              {uploading && <div className="absolute inset-0 bg-white/70 flex items-center justify-center"><Loader2 className="animate-spin text-[#FF85A2]" /></div>}
+              ))}
+              <label className="relative aspect-[3/4] rounded-2xl bg-[#FFF0F3] border-2 border-dashed border-[#FFB7C5] flex flex-col items-center justify-center cursor-pointer hover:bg-white transition-all">
+                <ImageIcon className="text-[#FF85A2] opacity-40" size={32} />
+                <p className="text-[9px] font-black text-[#FF85A2] uppercase mt-2">Add Photo</p>
+                <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
+                {uploading && <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-2xl"><Loader2 className="animate-spin text-[#FF85A2]" /></div>}
+              </label>
             </div>
-            <button type="submit" disabled={isSaving || uploading} className="w-full py-5 bg-[#FF85A2] text-white font-black rounded-3xl shadow-lg shadow-pink-100 hover:scale-105 active:scale-95 transition-all disabled:bg-gray-200 uppercase tracking-widest text-[11px]">
-              {isSaving ? "SEDANG MENYIMPAN..." : "SIMPAN KATALOG"}
+            <button type="submit" disabled={isSaving || uploading} className="w-full py-5 bg-[#FF85A2] text-white font-black rounded-[2rem] shadow-xl active:scale-95 transition-all disabled:bg-gray-200 uppercase tracking-widest text-[11px]">
+              {isSaving ? "Publishing..." : "Publish Collection ✨"}
             </button>
           </div>
         </form>
       </div>
 
-      {/* TABEL INVENTARIS */}
-      <div className="bg-white p-6 md:p-10 rounded-[3rem] shadow-xl border border-pink-50">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-          <h2 className="text-xl font-black text-gray-800 italic flex items-center gap-3"><Shirt className="text-[#FF85A2] bg-[#FFF0F3] p-2 rounded-xl" size={36} /> STOCK LIST</h2>
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-            <input placeholder="Cari koleksi..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-[#FDF8F9] rounded-full text-sm outline-none shadow-inner" />
+      {/* INVENTORY LIST - Table on Desktop, Cards on Mobile */}
+      <div className="bg-white p-5 md:p-10 rounded-[2.5rem] md:rounded-[3rem] shadow-xl border border-pink-50">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-5 mb-8">
+          <h2 className="text-xl font-black text-gray-800 italic flex items-center gap-3 uppercase self-start">
+            <Shirt className="text-[#FF85A2]" size={28} /> Inventory
+          </h2>
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-pink-200" size={16} />
+            <input placeholder="Search items..." value={searchQuery} onChange={(e) => {setSearchQuery(e.target.value); setCurrentPage(1);}} className="w-full pl-12 pr-6 py-4 bg-[#FDF8F9] rounded-2xl text-sm outline-none shadow-inner font-medium" />
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-[2rem] border border-pink-50">
-          <table className="w-full text-left">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-hidden rounded-[2.5rem] border border-pink-50 shadow-sm mb-8">
+          <table className="w-full text-left font-sans">
             <thead className="bg-[#FFF0F3] text-[10px] font-black text-[#FF85A2] uppercase tracking-[0.2em]">
               <tr>
-                <th className="p-6">Produk</th>
-                <th className="p-6">Deskripsi</th>
-                <th className="p-6 text-center">Stok</th>
-                <th className="p-6 text-center">Aksi</th>
+                <th className="p-6">Product</th>
+                <th className="p-6 text-center">Stock</th>
+                <th className="p-6 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredProducts.map((p) => (
-                <tr key={p.id} className="hover:bg-pink-50/10 transition-all text-sm">
+              {currentItems.map((p) => (
+                <tr key={p.id} className="hover:bg-pink-50/5 transition-all text-sm">
                   <td className="p-6 flex items-center gap-4">
-                    <img src={p.imageUrl || ""} className="h-16 w-12 rounded-xl object-cover shadow-md border-2 border-white shrink-0" />
+                    <img src={p.imageUrl || ""} className="h-16 w-12 rounded-xl object-cover border-2 border-white shadow-md" alt={p.name} />
                     <div>
-                      <p className="font-black text-gray-800 leading-tight">{p.name}</p>
-                      <p className="text-[9px] font-black text-[#FF85A2] uppercase mt-1 italic tracking-widest">{p.category}</p>
-                    </div>
-                  </td>
-                  <td className="p-6 max-w-xs">
-                    <p className="truncate text-gray-400 italic text-xs">{p.description || "-"}</p>
-                  </td>
-                  <td className="p-6 text-center">
-                    <div className="flex items-center justify-center gap-2 font-black text-gray-600">
-                      <button onClick={() => updateProductStock(p.id, p.stock - 1)} disabled={p.stock <= 0} className="disabled:opacity-20"><MinusCircle size={18} className="text-gray-300 hover:text-red-400" /></button>
-                      <span className={`px-3 py-1 rounded-lg shadow-inner ${p.stock <= 3 ? 'text-red-500 bg-red-50' : 'bg-gray-50'}`}>{p.stock}</span>
-                      <button onClick={() => updateProductStock(p.id, p.stock + 1)}><PlusCircle size={18} className="text-[#FF85A2]" /></button>
+                      <p className="font-black text-gray-800 leading-none mb-1">{p.name}</p>
+                      <p className="text-[9px] font-black text-[#FF85A2] uppercase italic">{p.category}</p>
                     </div>
                   </td>
                   <td className="p-6 text-center">
-                    <button onClick={() => handleDelete(p.id, p.name)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90">
-                      <Trash2 size={20} />
-                    </button>
+                    <div className="flex items-center justify-center gap-4">
+                      <button onClick={() => updateProductStock(p.id, p.stock - 1)} disabled={p.stock <= 0} className="active:scale-90 transition-all"><MinusCircle size={22} className="text-gray-200" /></button>
+                      <span className="font-black text-gray-700 min-w-[20px]">{p.stock}</span>
+                      <button onClick={() => updateProductStock(p.id, p.stock + 1)} className="active:scale-90 transition-all"><PlusCircle size={22} className="text-[#FF85A2]" /></button>
+                    </div>
+                  </td>
+                  <td className="p-6 text-center">
+                    <button onClick={() => { if(confirm(`Hapus ${p.name}?`)) deleteProduct(p.id); }} className="p-3 text-gray-300 hover:text-red-500 transition-all"><Trash2 size={20} /></button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        {/* Mobile List Card View */}
+        <div className="md:hidden space-y-4 mb-8">
+          {currentItems.map((p) => (
+            <div key={p.id} className="bg-[#FDF8F9] p-4 rounded-[2rem] border border-pink-50 flex items-center justify-between">
+              <div className="flex items-center gap-4 min-w-0">
+                <img src={p.imageUrl || ""} className="h-14 w-10 rounded-xl object-cover shadow-sm flex-shrink-0" alt={p.name} />
+                <div className="truncate">
+                  <p className="font-black text-[#4A0E1C] text-sm truncate leading-tight">{p.name}</p>
+                  <p className="text-[10px] font-bold text-[#FF85A2] uppercase italic mt-0.5">{p.category}</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-2 shrink-0 ml-2">
+                <div className="flex items-center gap-3 bg-white p-1 rounded-full shadow-sm border border-pink-50">
+                  <button onClick={() => updateProductStock(p.id, p.stock - 1)} className="p-1"><MinusCircle size={20} className="text-gray-300" /></button>
+                  <span className="font-black text-xs text-gray-600">{p.stock}</span>
+                  <button onClick={() => updateProductStock(p.id, p.stock + 1)} className="p-1"><PlusCircle size={20} className="text-[#FF85A2]" /></button>
+                </div>
+                <button onClick={() => { if(confirm(`Hapus ${p.name}?`)) deleteProduct(p.id); }} className="text-gray-300 mr-2"><Trash2 size={16} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Pagination - Mobile Friendly */}
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-1.5 overflow-x-auto py-2">
+             {[...Array(totalPages)].map((_, i) => (
+                <button key={i} onClick={() => setCurrentPage(i+1)} className={`h-10 w-10 shrink-0 rounded-2xl font-black text-xs transition-all ${currentPage === i+1 ? 'bg-[#FF85A2] text-white shadow-lg' : 'bg-gray-50 text-gray-400'}`}>{i+1}</button>
+             ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,19 +1,14 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  LayoutDashboard, 
-  ShoppingBag, 
-  BarChart3, 
-  FileSearch, 
-  Store, 
-  Settings,
-  Menu,
-  ChevronRight,
-  LogOut,
-  Box 
+  LayoutDashboard, ShoppingBag, BarChart3, 
+  FileSearch, Settings, LogOut, Box, Store, 
+  Sun, Moon, ChevronRight 
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminClientLayout({ 
   children, 
@@ -23,8 +18,14 @@ export default function AdminClientLayout({
   user: { fullName: string | null; role: string } 
 }) {
   const pathname = usePathname();
-  
-  // Ambil inisial otomatis
+  const [isDark, setIsDark] = useState(false);
+
+  // Toggle Dark Mode Logic
+  const toggleDarkMode = () => {
+    setIsDark(!isDark);
+    document.documentElement.classList.toggle("dark");
+  };
+
   const initials = user?.fullName
     ?.split(" ")
     .filter(Boolean)
@@ -34,119 +35,112 @@ export default function AdminClientLayout({
     .toUpperCase() || "??";
 
   return (
-    <div className="flex min-h-screen bg-[#FFF5F7] text-slate-900 font-sans selection:bg-[#FF85A2]/30">
+    <div className={`flex min-h-screen font-sans transition-colors duration-300 ${isDark ? 'bg-slate-900 text-white' : 'bg-[#FFF5F7] text-slate-900'} pb-28 lg:pb-0`}>
       
-      {/* SIDEBAR */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-72 bg-[#FFE4E9] lg:static lg:block hidden border-r border-[#FFD1DC] shadow-[20px_0_40px_-20px_rgba(255,133,162,0.15)]">
+      {/* SIDEBAR (Desktop) */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 lg:static lg:block hidden border-r ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-[#FFE4E9] border-[#FFD1DC]'} shadow-xl`}>
         <div className="flex h-full flex-col p-6">
-          
-          <div className="mb-8 rounded-[2.5rem] bg-white/40 p-6 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_10px_20px_-5px_rgba(255,133,162,0.1)] border border-white/60">
+          <div className={`mb-8 rounded-[2.5rem] p-6 border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-white/40 border-white/60'}`}>
             <div className="text-[10px] font-black uppercase tracking-[0.4em] text-[#FF85A2] italic">Admin Panel</div>
-            <div className="text-2xl font-black tracking-tighter text-[#4A0E1C] italic">
-              Lia Butik Binuang
-            </div>
-          </div>
-
-          {/* USER PROFILE */}
-          <div className="mb-10 flex items-center gap-4 rounded-[2rem] bg-[#FFF0F3] p-4 border border-white shadow-[8px_8px_16px_rgba(255,133,162,0.1),-8px_-8px_16px_rgba(255,255,255,0.8)]">
-            <div className="relative h-12 w-12 shrink-0 rounded-2xl bg-gradient-to-br from-[#FF85A2] to-[#FFB7C5] p-[2px] shadow-lg shadow-pink-200/50">
-              <div className="h-full w-full rounded-[14px] bg-white p-[2px]">
-                <div className="h-full w-full rounded-[12px] bg-pink-50 flex items-center justify-center text-[#FF85A2] font-black text-xs italic">
-                  {initials}
-                </div>
-              </div>
-            </div>
-            <div className="truncate">
-              <p className="text-sm font-black text-[#4A0E1C] truncate">
-                {user?.fullName || "Admin User"}
-              </p>
-              <p className="text-[10px] font-bold text-[#FF85A2] uppercase tracking-widest italic opacity-80">
-                {user?.role === "ADMIN" ? "Direktur Utama" : user?.role || "Staff"}
-              </p>
-            </div>
+            <div className={`text-2xl font-black tracking-tighter italic ${isDark ? 'text-pink-100' : 'text-[#4A0E1C]'}`}>Lia Butik</div>
           </div>
 
           <nav className="flex-1 space-y-2">
-            <SidebarLink href="/admin" icon={<LayoutDashboard size={20} />} label="Overview" />
-            <SidebarLink href="/admin/orders" icon={<ShoppingBag size={20} />} label="Orders" />
-            <SidebarLink href="/admin/inventory" icon={<Box size={20} />} label="Stock & Inventory" />
-            <SidebarLink href="/admin/analytics" icon={<BarChart3 size={20} />} label="Analytics" />
-            <SidebarLink href="/admin/invoice-import" icon={<FileSearch size={20} />} label="Invoice OCR" />
+            <SidebarLink href="/admin" icon={<LayoutDashboard size={20} />} label="Overview" isDark={isDark} />
+            <SidebarLink href="/admin/orders" icon={<ShoppingBag size={20} />} label="Orders" isDark={isDark} />
+            <SidebarLink href="/admin/inventory" icon={<Box size={20} />} label="Inventory" isDark={isDark} />
+            <SidebarLink href="/admin/analytics" icon={<BarChart3 size={20} />} label="Analytics" isDark={isDark} />
+            <SidebarLink href="/admin/invoice-import" icon={<FileSearch size={20} />} label="OCR" isDark={isDark} />
           </nav>
 
-          <div className="mt-auto space-y-3 pt-6 border-t border-[#FFD1DC]/50">
-            <SidebarLink href="/admin/settings" icon={<Settings size={20} />} label="Settings" />
-            <Link 
-              href="/shop" 
-              className="group flex items-center justify-between rounded-2xl bg-[#FF85A2] p-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-pink-200 transition-all hover:bg-[#ff7091] active:scale-95"
-            >
-              <div className="flex items-center gap-3">
-                <Store size={18} />
-                <span>Visit Shop</span>
-              </div>
-              <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
+          <div className="mt-auto space-y-3 pt-6 border-t border-pink-200/20">
+            <button onClick={toggleDarkMode} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-xs font-black uppercase text-slate-400 hover:text-[#FF85A2] transition-all">
+              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
+            <Link href="/shop" className="flex items-center justify-between rounded-2xl bg-[#FF85A2] p-4 text-xs font-black uppercase text-white shadow-lg">
+              <div className="flex items-center gap-3"><Store size={18} /><span>Shop</span></div>
+              <ChevronRight size={16} />
             </Link>
           </div>
         </div>
       </aside>
 
-      {/* MAIN CONTENT WRAPPER */}
-      <div className="flex-1 overflow-auto relative">
-        {/* Dekorasi BG Pink */}
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#FFD1DC] rounded-full blur-[120px] opacity-40 pointer-events-none" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-[#FFB7C5] rounded-full blur-[100px] opacity-30 pointer-events-none" />
+      {/* MOBILE BOTTOM NAV */}
+      <nav className="lg:hidden fixed bottom-6 inset-x-6 z-[100]">
+        <div className={`backdrop-blur-xl border rounded-[2.5rem] p-2 shadow-2xl flex items-center justify-between px-4 ${isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-white/80 border-white/50'}`}>
+          <MobileNavLink href="/admin" icon={<LayoutDashboard size={20} />} active={pathname === "/admin"} isDark={isDark} />
+          <MobileNavLink href="/admin/orders" icon={<ShoppingBag size={20} />} active={pathname === "/admin/orders"} isDark={isDark} />
+          
+          <Link href="/admin/inventory">
+            <div className="h-14 w-14 rounded-full bg-[#FF85A2] text-white flex items-center justify-center shadow-lg -translate-y-6 border-4 border-[#FFF5F7] dark:border-slate-900 active:scale-90 transition-all">
+              <Box size={24} />
+            </div>
+          </Link>
 
-        <header className="sticky top-0 z-40 p-6">
-          <div className="mx-auto flex max-w-7xl items-center justify-between rounded-[2rem] bg-white/60 p-4 px-8 backdrop-blur-xl border border-white shadow-[0_15px_35px_-10px_rgba(255,133,162,0.2)]">
-            <div className="flex items-center gap-4">
-              <button className="rounded-xl bg-white p-2 shadow-sm lg:hidden text-[#FF85A2]">
-                <Menu size={20} />
-              </button>
-              <h2 className="font-black text-[#4A0E1C] uppercase italic tracking-[0.2em] text-xs">
+          <MobileNavLink href="/admin/analytics" icon={<BarChart3 size={20} />} active={pathname === "/admin/analytics"} isDark={isDark} />
+          <button onClick={toggleDarkMode} className={`p-3 rounded-2xl transition-all ${isDark ? 'text-yellow-400' : 'text-slate-400'}`}>
+            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+        </div>
+      </nav>
+
+      {/* MAIN CONTENT */}
+      <div className="flex-1 relative overflow-x-hidden">
+        <header className="sticky top-0 z-[90] p-4 lg:p-6">
+          <div className={`mx-auto flex max-w-7xl items-center justify-between rounded-3xl p-3 px-6 backdrop-blur-lg border shadow-sm ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white/60 border-white'}`}>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-[#FF85A2] flex items-center justify-center text-white font-black text-[10px] shadow-md">
+                {initials}
+              </div>
+              {/* SHOP LINK FOR MOBILE (TOP) */}
+              <Link href="/shop" className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-100 text-[#FF85A2] text-[10px] font-black uppercase">
+                <Store size={12} />
+                <span>Shop</span>
+              </Link>
+              <h2 className={`font-black uppercase italic tracking-[0.1em] text-[10px] hidden sm:block ${isDark ? 'text-pink-100' : 'text-[#4A0E1C]'}`}>
                 {pathname.split("/").pop() || "Overview"}
               </h2>
             </div>
 
-            <Link href="/api/auth/signout" className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest shadow-sm border border-pink-50 hover:text-red-500 hover:border-red-100 transition-all active:scale-95">
-              <LogOut size={16} />
-              <span className="hidden sm:inline italic">Sign Out</span>
+            <Link href="/api/auth/signout" className={`p-2 transition-colors ${isDark ? 'text-slate-400 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}>
+              <LogOut size={20} />
             </Link>
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl p-6 lg:p-10 pt-2 relative z-10">
-          {/* Children adalah isi dari page.tsx lo */}
-          <div className="animate-in fade-in slide-in-from-bottom-6 duration-1000 space-y-8 [&>div]:shadow-[0_30px_60px_-15px_rgba(255,133,162,0.12)] [&>div]:rounded-[3rem] [&>div]:border-none [&>div]:bg-white/80 [&>div]:backdrop-blur-sm [&>div]:p-10">
-            {children}
-          </div>
+        <main className="mx-auto max-w-7xl p-4 lg:p-10 pt-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: "linear" }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
   );
 }
 
-function SidebarLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+function SidebarLink({ href, icon, label, isDark }: { href: string; icon: React.ReactNode; label: string; isDark: boolean }) {
   const pathname = usePathname();
   const isActive = pathname === href;
-
   return (
-    <Link 
-      href={href} 
-      className={`group flex items-center justify-between rounded-2xl px-6 py-4 text-xs font-black uppercase tracking-widest transition-all duration-500 ${
-        isActive 
-          ? "bg-white text-[#FF85A2] shadow-[10px_10px_20px_rgba(255,133,162,0.1)] translate-x-3 scale-105" 
-          : "text-slate-400 hover:text-[#FF85A2] hover:bg-white/40"
-      }`}
-    >
-      <div className="flex items-center gap-4">
-        <span className={`${isActive ? "text-[#FF85A2]" : "text-slate-300 group-hover:text-[#FF85A2]"} transition-colors`}>
-          {icon}
-        </span>
-        <span className="italic">{label}</span>
-      </div>
-      {isActive && (
-        <div className="h-1.5 w-1.5 rounded-full bg-[#FF85A2] animate-pulse shadow-[0_0_12px_#FF85A2]" />
-      )}
+    <Link href={href} className={`flex items-center gap-4 rounded-2xl px-5 py-3.5 text-xs font-black uppercase transition-all duration-200 ${isActive ? (isDark ? "bg-slate-700 text-[#FF85A2] shadow-lg" : "bg-white text-[#FF85A2] shadow-md") : "text-slate-400 hover:text-[#FF85A2]"}`}>
+      {icon}<span className="italic">{label}</span>
+    </Link>
+  );
+}
+
+function MobileNavLink({ href, icon, active, isDark }: { href: string; icon: React.ReactNode; active: boolean; isDark: boolean }) {
+  return (
+    <Link href={href} className={`p-3 rounded-2xl transition-all ${active ? 'text-[#FF85A2] bg-pink-50/10 scale-110' : 'text-slate-400'}`}>
+      {icon}
     </Link>
   );
 }
