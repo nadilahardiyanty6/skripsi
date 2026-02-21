@@ -1,31 +1,41 @@
 import { NextResponse } from 'next/server';
 
-const KOMERCE_KEY = process.env.KOMERCE_SHIPPING_KEY;
+// Pindahkan pengambilan key ke dalam fungsi agar selalu segar saat dipanggil serverless
+const getApiKey = () => process.env.KOMERCE_SHIPPING_KEY;
 const BASE_URL = 'https://rajaongkir.komerce.id/api/v1';
 
 export async function GET(request: Request) {
   try {
+    const key = getApiKey();
+    if (!key) throw new Error("API Key tidak terbaca di server");
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || "";
-    const url = `${BASE_URL}/destination/domestic-destination?search=${search}&limit=10`;
+    const url = `${BASE_URL}/destination/domestic-destination?search=${encodeURIComponent(search)}&limit=10`;
 
     const res = await fetch(url, {
       method: 'GET',
-      headers: { 'key': KOMERCE_KEY! },
+      headers: { 'key': key },
+      // Tambahkan cache control agar tidak kena stale data di Vercel
+      next: { revalidate: 0 } 
     });
 
     const result = await res.json();
+    
+    // Komerce biasanya mengembalikan data dalam result.data.data atau result.data
+    // Pastikan strukturnya sesuai dengan hasil console.log
     return NextResponse.json(result.data || []); 
-  } catch (error) {
-    return NextResponse.json([], { status: 500 });
+  } catch (error: any) {
+    console.error("Error RajaOngkir GET:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const key = getApiKey();
     const body = await request.json();
     
-    // Paksa berat minimal 500gr agar harga tidak receh
     const finalWeight = Math.max(Number(body.weight) || 500, 500);
 
     const params = new URLSearchParams();
@@ -37,10 +47,11 @@ export async function POST(request: Request) {
     const res = await fetch(`${BASE_URL}/calculate/domestic-cost`, {
       method: 'POST',
       headers: { 
-        'key': KOMERCE_KEY!,
+        'key': key!,
         'Content-Type': 'application/x-www-form-urlencoded'
       },
       body: params.toString(),
+      next: { revalidate: 0 }
     });
 
     const result = await res.json();
@@ -48,6 +59,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result.data || []);
   } catch (error: any) {
+    console.error("Error RajaOngkir POST:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
