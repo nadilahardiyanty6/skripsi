@@ -41,7 +41,7 @@ model Product {
   category    String
   imageUrl    String?
   priceCents  Int
-  weightGram  Int         @default(500) // Default 500gr buat hitung ongkir Komerce
+  weightGram  Int         @default(500) 
   stock       Int         @default(0)
   isActive    Boolean     @default(true)
   createdAt   DateTime    @default(now())
@@ -89,7 +89,7 @@ model OrderItem {
 model FinanceRecord {
   id          String   @id @default(uuid()) @db.Uuid
   orderId     String   @unique @db.Uuid
-  type        String   // "REVENUE" | "REFUND"
+  type        String  
   amountCents Int
   note        String?
   createdAt   DateTime @default(now())

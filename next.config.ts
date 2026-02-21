@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // TAMBAHKAN HOSTNAME SUPABASE LO DI SINI
       {
         protocol: 'https',
         hostname: 'yzakhqiburiatvritdug.supabase.co',
