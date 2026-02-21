@@ -23,84 +23,76 @@ enum OrderStatus {
 }
 
 model Profile {
-  id        String   @id @db.Uuid
-  email     String   @unique
-  fullName  String?  @map("full_name")
-  phoneE164 String?  @map("phone_e164")
-  role      Role     @default(USER)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String   @id @db.Uuid
+  email      String   @unique
+  fullName   String?
+  phoneE164  String?
+  role       Role     @default(USER)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  orders    Order[]
-
-  @@map("profiles")
+  orders     Order[]
 }
 
 model Product {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String      @id @default(uuid()) @db.Uuid
   name        String
   description String?
   category    String
-  imageUrl    String?  @map("image_url")
-  priceCents  Int      @map("price_cents")
-  weightGram  Int      @default(500) @map("weight_gram")
-  stock       Int      @default(0)
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  imageUrl    String?
+  priceCents  Int
+  weightGram  Int         @default(500) 
+  stock       Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   orderItems  OrderItem[]
-
-  @@map("products")
 }
 
 model Order {
   id              String      @id @default(uuid()) @db.Uuid
-  userId          String      @db.Uuid @map("user_id")
+  userId          String      @db.Uuid
   status          OrderStatus @default(PENDING)
-  trackingUrl     String?     @map("tracking_url")
-  itemsJson       Json        @map("items_json")
-  totalCents      Int         @map("total_cents")
-  shippingCents   Int         @default(0) @map("shipping_cents")
-  idempotencyKey  String?     @unique @map("idempotency_key")
+  trackingUrl     String?
+  itemsJson       Json
+  totalCents      Int         // Nilai akhir: (Subtotal Produk + shippingCents)
+  shippingCents   Int         @default(0) // Record biaya ongkir dari Komerce
+  idempotencyKey  String?     @unique
   
-  shippingAddress Json?       @map("shipping_address")
-  paymentBank     String?     @map("payment_bank")
-  paymentProofUrl String?     @map("payment_proof_url")
+  // Detail Alamat & Pembayaran
+  shippingAddress Json?       // Simpan: Nama, Kota, Kecamatan, Alamat Lengkap, Kurir
+  paymentBank     String?     
+  paymentProofUrl String?     
 
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
+  // Relasi
   user            Profile     @relation(fields: [userId], references: [id])
   items           OrderItem[]
   finance         FinanceRecord?
-
-  @@map("orders")
 }
 
 model OrderItem {
-  id         String   @id @default(uuid()) @db.Uuid
-  orderId    String   @db.Uuid @map("order_id")
-  productId  String   @db.Uuid @map("product_id")
-  qty        Int
-  unitCents  Int      @map("unit_cents")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  productId String   @db.Uuid
+  qty       Int
+  unitCents Int
+  createdAt DateTime @default(now())
 
-  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product    Product  @relation(fields: [productId], references: [id])
-
-  @@map("order_items")
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
 }
 
 model FinanceRecord {
   id          String   @id @default(uuid()) @db.Uuid
-  orderId     String   @unique @db.Uuid @map("order_id")
-  type        String
-  amountCents Int      @map("amount_cents")
+  orderId     String   @unique @db.Uuid
+  type        String  
+  amountCents Int
   note        String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime @default(now())
 
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@map("finance_records")
 }
