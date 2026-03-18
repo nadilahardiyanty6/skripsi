@@ -59,9 +59,7 @@ export default function RegisterPage() {
             Create Account
           </div>
           <h1 className="mt-2 text-2xl font-semibold">Register</h1>
-          <p className="mt-1 text-sm text-black/60">
-            Data akan masuk ke <b>Supabase Auth</b> + tabel <b>Profile</b>.
-          </p>
+        
 
           <div className="mt-5 space-y-3">
             <input

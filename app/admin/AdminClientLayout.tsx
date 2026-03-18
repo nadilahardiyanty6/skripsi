@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, ShoppingBag, BarChart3, 
-  FileSearch, Settings, LogOut, Box, Store, 
-  Sun, Moon, ChevronRight 
+  FileSearch, LogOut, Box, Store, 
+  Sun, Moon, ChevronRight, Ticket 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -45,9 +45,10 @@ export default function AdminClientLayout({
             <div className={`text-2xl font-black tracking-tighter italic ${isDark ? 'text-pink-100' : 'text-[#4A0E1C]'}`}>Lia Butik</div>
           </div>
 
-          <nav className="flex-1 space-y-2">
+          <nav className="flex-1 space-y-2 text-[#4A0E1C]">
             <SidebarLink href="/admin" icon={<LayoutDashboard size={20} />} label="Overview" isDark={isDark} />
             <SidebarLink href="/admin/orders" icon={<ShoppingBag size={20} />} label="Orders" isDark={isDark} />
+            <SidebarLink href="/admin/vouchers" icon={<Ticket size={20} />} label="Vouchers" isDark={isDark} />
             <SidebarLink href="/admin/inventory" icon={<Box size={20} />} label="Inventory" isDark={isDark} />
             <SidebarLink href="/admin/analytics" icon={<BarChart3 size={20} />} label="Analytics" isDark={isDark} />
             <SidebarLink href="/admin/invoice-import" icon={<FileSearch size={20} />} label="OCR" isDark={isDark} />
@@ -78,10 +79,8 @@ export default function AdminClientLayout({
             </div>
           </Link>
 
+          <MobileNavLink href="/admin/vouchers" icon={<Ticket size={20} />} active={pathname.startsWith("/admin/vouchers")} isDark={isDark} />
           <MobileNavLink href="/admin/analytics" icon={<BarChart3 size={20} />} active={pathname === "/admin/analytics"} isDark={isDark} />
-          <button onClick={toggleDarkMode} className={`p-3 rounded-2xl transition-all ${isDark ? 'text-yellow-400' : 'text-slate-400'}`}>
-            {isDark ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
         </div>
       </nav>
 
@@ -89,23 +88,27 @@ export default function AdminClientLayout({
       <div className="flex-1 relative overflow-x-hidden">
         <header className="sticky top-0 z-[90] p-4 lg:p-6">
           <div className={`mx-auto flex max-w-7xl items-center justify-between rounded-3xl p-3 px-6 backdrop-blur-lg border shadow-sm ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white/60 border-white'}`}>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-[#4A0E1C]">
               <div className="h-9 w-9 rounded-xl bg-[#FF85A2] flex items-center justify-center text-white font-black text-[10px] shadow-md">
                 {initials}
               </div>
-              {/* SHOP LINK FOR MOBILE (TOP) */}
               <Link href="/shop" className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-100 text-[#FF85A2] text-[10px] font-black uppercase">
                 <Store size={12} />
                 <span>Shop</span>
               </Link>
               <h2 className={`font-black uppercase italic tracking-[0.1em] text-[10px] hidden sm:block ${isDark ? 'text-pink-100' : 'text-[#4A0E1C]'}`}>
-                {pathname.split("/").pop() || "Overview"}
+                {pathname.split("/").filter(Boolean).pop() || "Overview"}
               </h2>
             </div>
 
-            <Link href="/api/auth/signout" className={`p-2 transition-colors ${isDark ? 'text-slate-400 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}>
-              <LogOut size={20} />
-            </Link>
+            <div className="flex items-center gap-2">
+               <button onClick={toggleDarkMode} className="lg:hidden p-2 text-slate-400">
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              <Link href="/api/auth/signout" className={`p-2 transition-colors ${isDark ? 'text-slate-400 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}>
+                <LogOut size={20} />
+              </Link>
+            </div>
           </div>
         </header>
 
@@ -129,7 +132,7 @@ export default function AdminClientLayout({
 
 function SidebarLink({ href, icon, label, isDark }: { href: string; icon: React.ReactNode; label: string; isDark: boolean }) {
   const pathname = usePathname();
-  const isActive = pathname === href;
+  const isActive = pathname === href || (href !== "/admin" && pathname.startsWith(href));
   return (
     <Link href={href} className={`flex items-center gap-4 rounded-2xl px-5 py-3.5 text-xs font-black uppercase transition-all duration-200 ${isActive ? (isDark ? "bg-slate-700 text-[#FF85A2] shadow-lg" : "bg-white text-[#FF85A2] shadow-md") : "text-slate-400 hover:text-[#FF85A2]"}`}>
       {icon}<span className="italic">{label}</span>

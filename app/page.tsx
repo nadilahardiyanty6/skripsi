@@ -93,7 +93,7 @@ export default function Home() {
           />
 
           <LinkButton 
-            href="https://instagram.com" 
+            href="https://www.instagram.com/liabutik69?igsh=MWR2aGY0ZDJnMWs1eQ==" 
             icon={<Instagram size={20} />} 
             label="Style Gallery" 
             sub="Daily Fashion Inspiration"

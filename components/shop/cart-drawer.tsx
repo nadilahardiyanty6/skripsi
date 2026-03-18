@@ -67,7 +67,7 @@ export default function CartDrawer({ open, onClose }: { open: boolean; onClose: 
                         <div className="h-12 w-12 rounded-full border-2 border-dashed border-gray-200 animate-spin-slow" />
                       </div>
                     </div>
-                    <p className="text-xs font-black uppercase text-gray-300 tracking-widest">Keranjangmu kosong, Ami.</p>
+                    <p className="text-xs font-black uppercase text-gray-300 tracking-widest">Keranjangmu kosong</p>
                   </div>
                 ) : (
                   <div className="space-y-6">

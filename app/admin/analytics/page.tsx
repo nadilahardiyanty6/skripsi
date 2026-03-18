@@ -16,12 +16,20 @@ export default async function AdminAnalyticsPage() {
 
   // Ambil data order lengkap untuk pembukuan Excel
   const allOrders = await prisma.order.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      user: { select: { fullName: true, phoneE164: true } }
-    }
-  });
-
+  orderBy: { createdAt: "desc" },
+  include: {
+    user: { select: { fullName: true, phoneE164: true } },
+    items: {
+      include: {
+        product: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    },
+  },
+});
   const fullData = {
     ...analyticsData,
     allOrders
