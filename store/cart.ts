@@ -5,45 +5,83 @@ export type CartItem = {
   productId: string;
   name: string;
   imageUrl?: string | null;
-  // Hapus unitCents biar gak double/bingung
-  priceCents: number; 
+  priceCents: number;
   qty: number;
   category: string;
+
+  // Tambahan untuk pilihan customer
+  size?: string;
+  color?: string;
 };
 
 type CartState = {
   items: CartItem[];
   add: (item: Omit<CartItem, "qty">, qty?: number) => void;
-  remove: (productId: string) => void;
-  setQty: (productId: string, qty: number) => void;
+  remove: (productId: string, size?: string, color?: string) => void;
+  setQty: (productId: string, qty: number, size?: string, color?: string) => void;
   clear: () => void;
   totalCents: () => number;
+};
+
+const isSameCartItem = (
+  item: CartItem,
+  productId: string,
+  size?: string,
+  color?: string
+) => {
+  return (
+    item.productId === productId &&
+    item.size === size &&
+    item.color === color
+  );
 };
 
 export const useCart = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+
       add: (item, qty = 1) =>
         set((s) => {
-          const existing = s.items.find((x) => x.productId === item.productId);
+          const existing = s.items.find((x) =>
+            isSameCartItem(x, item.productId, item.size, item.color)
+          );
+
           if (existing) {
             return {
               items: s.items.map((x) =>
-                x.productId === item.productId ? { ...x, qty: x.qty + qty } : x
+                isSameCartItem(x, item.productId, item.size, item.color)
+                  ? { ...x, qty: x.qty + qty }
+                  : x
               ),
             };
           }
-          return { items: [...s.items, { ...item, qty }] };
+
+          return {
+            items: [...s.items, { ...item, qty }],
+          };
         }),
-      remove: (productId) => set((s) => ({ items: s.items.filter((x) => x.productId !== productId) })),
-      setQty: (productId, qty) =>
+
+      remove: (productId, size, color) =>
         set((s) => ({
-          items: s.items.map((x) => (x.productId === productId ? { ...x, qty: Math.max(1, qty) } : x)),
+          items: s.items.filter(
+            (x) => !isSameCartItem(x, productId, size, color)
+          ),
         })),
+
+      setQty: (productId, qty, size, color) =>
+        set((s) => ({
+          items: s.items.map((x) =>
+            isSameCartItem(x, productId, size, color)
+              ? { ...x, qty: Math.max(1, qty) }
+              : x
+          ),
+        })),
+
       clear: () => set({ items: [] }),
-      // Update: Ganti unitCents jadi priceCents di kalkulasi total
-      totalCents: () => get().items.reduce((acc, x) => acc + x.priceCents * x.qty, 0),
+
+      totalCents: () =>
+        get().items.reduce((acc, x) => acc + x.priceCents * x.qty, 0),
     }),
     { name: "pinkblossom_cart_v1" }
   )

@@ -51,20 +51,6 @@ export default function ProductVisuals({ images, alt }: { images: string[], alt:
           </div>
         </div>
       </div>
-
-      {/* Mini Stats 3D */}
-      <div className="grid grid-cols-3 gap-4 px-2">
-        {[
-          { label: "Premium", icon: <Sparkles size={14}/> },
-          { label: "Ori", icon: <ShieldCheck size={14}/> },
-          { label: "Lia Butik", icon: "✨" }
-        ].map((stat, i) => (
-          <div key={i} className="flex flex-col items-center justify-center p-4 rounded-3xl bg-white shadow-[6px_6px_12px_#f0f0f0,-6px_-6px_12px_#ffffff] border border-white/50 text-[9px] font-black uppercase text-[#4A0E1C] tracking-widest">
-            <span className="mb-1">{stat.icon}</span>
-            {stat.label}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

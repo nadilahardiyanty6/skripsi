@@ -1513,70 +1513,112 @@ export default function CheckoutPage() {
 
                     <div className="max-h-72 space-y-3 overflow-y-auto pr-1 custom-scrollbar">
                       <AnimatePresence>
-                        {items.map((item) => (
-                          <motion.div
-                            key={item.productId}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, x: -16 }}
-                            className="group rounded-[1.5rem] border border-white/10 bg-black/10 p-3"
-                          >
-                            <div className="flex gap-3">
-                              <div className="h-16 w-16 overflow-hidden rounded-2xl bg-white/10 flex-shrink-0">
-                                <img
-                                  src={item.imageUrl || "https://placehold.co/100x100?text=Lia+Butik"}
-                                  alt={item.name}
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
+  {items.map((item, index) => {
+    const itemKey = `${item.productId}-${item.size || "no-size"}-${
+      item.color || "no-color"
+    }-${index}`;
 
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-[12px] font-black uppercase text-[#FFB3C5]">
-                                      {item.name}
-                                    </p>
-                                    <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35">
-                                      {formatPrice(item.priceCents / 100)} / pcs
-                                    </p>
-                                  </div>
+    return (
+      <motion.div
+        key={itemKey}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, x: -16 }}
+        className="group rounded-[1.5rem] border border-white/10 bg-black/10 p-3"
+      >
+        <div className="flex gap-3">
+          <div className="h-16 w-16 overflow-hidden rounded-2xl bg-white/10 flex-shrink-0">
+            <img
+              src={
+                item.imageUrl ||
+                "https://placehold.co/100x100?text=Lia+Butik"
+              }
+              alt={item.name}
+              className="h-full w-full object-cover"
+            />
+          </div>
 
-                                  <button
-                                    onClick={() => remove(item.productId)}
-                                    className="rounded-full p-1 text-white/25 transition-colors hover:text-red-400"
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
-                                </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-[12px] font-black uppercase text-[#FFB3C5]">
+                  {item.name}
+                </p>
 
-                                <div className="mt-3 flex items-center justify-between">
-                                  <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1">
-                                    <button
-                                      onClick={() => setQty(item.productId, item.qty - 1)}
-                                      className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 transition-colors hover:bg-white/20"
-                                    >
-                                      <Minus size={11} />
-                                    </button>
-                                    <span className="min-w-[18px] text-center text-[11px] font-black">
-                                      {item.qty}
-                                    </span>
-                                    <button
-                                      onClick={() => setQty(item.productId, item.qty + 1)}
-                                      className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 transition-colors hover:bg-white/20"
-                                    >
-                                      <Plus size={11} />
-                                    </button>
-                                  </div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {item.size && (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-white/50">
+                      Size {item.size}
+                    </span>
+                  )}
 
-                                  <p className="text-sm font-black italic tracking-tight">
-                                    {formatPrice((item.priceCents / 100) * item.qty)}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
+                  {item.color && (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-white/50">
+                      {item.color}
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-white/35">
+                  {formatPrice(item.priceCents / 100)} / pcs
+                </p>
+              </div>
+
+              <button
+                onClick={() =>
+                  remove(item.productId, item.size, item.color)
+                }
+                className="rounded-full p-1 text-white/25 transition-colors hover:text-red-400"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1">
+                <button
+                  onClick={() =>
+                    setQty(
+                      item.productId,
+                      item.qty - 1,
+                      item.size,
+                      item.color
+                    )
+                  }
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 transition-colors hover:bg-white/20"
+                >
+                  <Minus size={11} />
+                </button>
+
+                <span className="min-w-[18px] text-center text-[11px] font-black">
+                  {item.qty}
+                </span>
+
+                <button
+                  onClick={() =>
+                    setQty(
+                      item.productId,
+                      item.qty + 1,
+                      item.size,
+                      item.color
+                    )
+                  }
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 transition-colors hover:bg-white/20"
+                >
+                  <Plus size={11} />
+                </button>
+              </div>
+
+              <p className="text-sm font-black italic tracking-tight">
+                {formatPrice((item.priceCents / 100) * item.qty)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  })}
+</AnimatePresence>
                     </div>
                   </div>
 
