@@ -92,7 +92,7 @@ export default async function ProductDetail({
             </h3>
 
             <p className="leading-relaxed text-gray-600">
-              {cleanDescription || "Koleksi dari Lia Butik Binuang Karawang."}
+              {cleanDescription || "Koleksi dari Lia Butik Binuang."}
             </p>
           </section>
 

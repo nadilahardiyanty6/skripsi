@@ -32,7 +32,7 @@ export default function AdminClientLayout({
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || "??";
+    .toUpperCase() || "B";
 
   return (
     <div className={`flex min-h-screen font-sans transition-colors duration-300 ${isDark ? 'bg-slate-900 text-white' : 'bg-[#FFF5F7] text-slate-900'} pb-28 lg:pb-0`}>

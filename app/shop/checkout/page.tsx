@@ -44,8 +44,8 @@ const formatPrice = (amount: number) => {
 };
 
 const BANKS = [
-  { id: "BCA", no: "123-456-7890", owner: "Fahmi Al Ashri" },
-  { id: "Mandiri", no: "9876-543-210", owner: "Fahmi Al Ashri" },
+  { id: "BCA", no: "123-456-7890", owner: "Lia Warliyah" },
+  { id: "Mandiri", no: "9876-543-210", owner: "Lia Warliyah" },
 ];
 
 type AddressBookItem = {

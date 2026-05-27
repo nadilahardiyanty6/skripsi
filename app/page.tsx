@@ -85,9 +85,9 @@ export default function Home() {
           />
 
           <LinkButton 
-            href="https://wa.me/6281221778278" 
+            href="https://wa.me/081381911424" 
             icon={<MessageCircle size={20} />} 
-            label="Personal Stylist" 
+            label="WhatsApp Consulations" 
             sub="Consult via WhatsApp"
             variants={itemVariants}
           />
@@ -111,7 +111,7 @@ export default function Home() {
         {/* Footer */}
         <motion.div variants={itemVariants} className="mt-16 text-center">
             <p className="text-[8px] font-black uppercase tracking-[0.4em] text-[#4A0E1C] dark:text-pink-200 opacity-30 italic">
-              Lia Binuang Boutique &bull; 2026
+              Lia Butik Binuang &bull; 2021
             </p>
         </motion.div>
 
