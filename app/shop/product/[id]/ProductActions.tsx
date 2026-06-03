@@ -8,8 +8,10 @@ import {
   CreditCard,
   CheckCircle2,
   AlertCircle,
+  Ruler,
+  Palette,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import { motion } from "framer-motion";
 
 export default function ProductActions({ product }: { product: any }) {
@@ -23,27 +25,47 @@ export default function ProductActions({ product }: { product: any }) {
   const sizeStock = product.sizeData || {};
   const colorData: string[] = product.colorData || [];
 
-  const availableSizes = ["XS", "S", "M", "L", "XL", "XXL"];
+  const availableSizes =
+    Object.keys(sizeStock).length > 0
+      ? ["XS", "S", "M", "L", "XL", "XXL"].filter((size) =>
+          Object.prototype.hasOwnProperty.call(sizeStock, size)
+        )
+      : ["XS", "S", "M", "L", "XL", "XXL"];
+
   const hasColorOptions = colorData.length > 0;
 
-  const handleAction = (isRedirect: boolean) => {
+  const showSizeToast = () => {
+    toast.error("Pilih ukuran dulu ya!", {
+      description: "Ukuran wajib dipilih sebelum produk masuk checkout.",
+      icon: <AlertCircle className="text-red-500" size={18} />,
+      className: "rounded-[2rem] border-pink-50 font-sans shadow-xl",
+    });
+  };
+
+  const showColorToast = () => {
+    toast.error("Pilih warna dulu ya!", {
+      description: "Warna wajib dipilih sebelum produk masuk checkout.",
+      icon: <AlertCircle className="text-red-500" size={18} />,
+      className: "rounded-[2rem] border-pink-50 font-sans shadow-xl",
+    });
+  };
+
+  const validateBeforeAction = () => {
     if (!selectedSize) {
-      toast.error("Pilih ukuran dulu ya!", {
-        description: "Ukurannya wajib dipilih sebelum masuk keranjang.",
-        icon: <AlertCircle className="text-red-500" size={18} />,
-        className: "rounded-[2rem] font-sans border-pink-50 shadow-xl",
-      });
-      return;
+      showSizeToast();
+      return false;
     }
 
     if (hasColorOptions && !selectedColor) {
-      toast.error("Pilih warna dulu ya!", {
-        description: "Warnanya wajib dipilih sebelum masuk keranjang.",
-        icon: <AlertCircle className="text-red-500" size={18} />,
-        className: "rounded-[2rem] font-sans border-pink-50 shadow-xl",
-      });
-      return;
+      showColorToast();
+      return false;
     }
+
+    return true;
+  };
+
+  const handleAction = (isRedirect: boolean) => {
+    if (!validateBeforeAction()) return;
 
     setIsAdding(true);
 
@@ -55,7 +77,7 @@ export default function ProductActions({ product }: { product: any }) {
         imageUrl: product.imageUrl,
         priceCents: product.priceCents,
         size: selectedSize,
-        color: selectedColor,
+        color: selectedColor || undefined,
       },
       1
     );
@@ -64,7 +86,7 @@ export default function ProductActions({ product }: { product: any }) {
       description: `${product.name} • Size ${selectedSize}${
         selectedColor ? ` • Warna ${selectedColor}` : ""
       } sudah masuk keranjang.`,
-      className: "rounded-[2rem] font-sans border-pink-50 shadow-xl",
+      className: "rounded-[2rem] border-pink-50 font-sans shadow-xl",
     });
 
     setTimeout(() => {
@@ -73,13 +95,16 @@ export default function ProductActions({ product }: { product: any }) {
       if (isRedirect) {
         router.push("/shop/checkout");
       }
-    }, 300);
+    }, 350);
   };
 
   return (
     <div className="space-y-8 pt-8">
+      <Toaster position="top-center" richColors />
+
       <div className="space-y-4">
         <label className="flex items-center gap-2 text-sm font-semibold text-[#4A0E1C]">
+          <Ruler size={17} className="text-[#FF85A2]" />
           Pilih Ukuran
           {selectedSize && (
             <span className="text-[#FF85A2]">— {selectedSize}</span>
@@ -98,14 +123,13 @@ export default function ProductActions({ product }: { product: any }) {
                 type="button"
                 disabled={!isAvailable}
                 onClick={() => setSelectedSize(size)}
-                className={`relative h-12 w-12 rounded-xl text-sm font-semibold transition-all
-                  ${
-                    selectedSize === size
-                      ? "bg-[#FF85A2] text-white shadow-md"
-                      : isAvailable
+                className={`relative h-12 w-12 rounded-xl text-sm font-semibold transition-all ${
+                  selectedSize === size
+                    ? "bg-[#FF85A2] text-white shadow-md"
+                    : isAvailable
                       ? "border border-pink-100 bg-white text-gray-600 hover:border-[#FF85A2] hover:text-[#FF85A2]"
                       : "cursor-not-allowed bg-gray-100 text-gray-300"
-                  }`}
+                }`}
               >
                 {size}
 
@@ -117,15 +141,26 @@ export default function ProductActions({ product }: { product: any }) {
                     <CheckCircle2 size={10} className="text-white" />
                   </motion.div>
                 )}
+
+                {!isAvailable && (
+                  <span className="absolute inset-x-1 top-1/2 h-px -rotate-45 bg-gray-300" />
+                )}
               </button>
             );
           })}
         </div>
+
+        {!selectedSize && (
+          <p className="text-xs font-semibold text-gray-400">
+            Pilih salah satu ukuran dulu sebelum tambah ke keranjang atau checkout.
+          </p>
+        )}
       </div>
 
       {hasColorOptions && (
         <div className="space-y-4">
           <label className="flex items-center gap-2 text-sm font-semibold text-[#4A0E1C]">
+            <Palette size={17} className="text-[#FF85A2]" />
             Pilih Warna
             {selectedColor && (
               <span className="text-[#FF85A2]">— {selectedColor}</span>
@@ -138,12 +173,11 @@ export default function ProductActions({ product }: { product: any }) {
                 key={color}
                 type="button"
                 onClick={() => setSelectedColor(color)}
-                className={`relative rounded-xl px-4 py-3 text-sm font-semibold transition-all
-                  ${
-                    selectedColor === color
-                      ? "bg-[#FF85A2] text-white shadow-md"
-                      : "border border-pink-100 bg-white text-gray-600 hover:border-[#FF85A2] hover:text-[#FF85A2]"
-                  }`}
+                className={`relative rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+                  selectedColor === color
+                    ? "bg-[#FF85A2] text-white shadow-md"
+                    : "border border-pink-100 bg-white text-gray-600 hover:border-[#FF85A2] hover:text-[#FF85A2]"
+                }`}
               >
                 {color}
 
@@ -165,7 +199,8 @@ export default function ProductActions({ product }: { product: any }) {
         <button
           type="button"
           onClick={() => handleAction(false)}
-          className="flex items-center justify-center gap-3 rounded-2xl border border-pink-100 bg-white py-5 text-sm font-semibold text-[#FF85A2] shadow-sm transition-all hover:shadow-md active:scale-95"
+          disabled={isAdding}
+          className="flex items-center justify-center gap-3 rounded-2xl border border-pink-100 bg-white py-5 text-sm font-semibold text-[#FF85A2] shadow-sm transition-all hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <ShoppingBag size={18} />
           {isAdding ? "Menambahkan..." : "Tambah ke Keranjang"}
@@ -174,7 +209,12 @@ export default function ProductActions({ product }: { product: any }) {
         <button
           type="button"
           onClick={() => handleAction(true)}
-          className="flex items-center justify-center gap-3 rounded-2xl bg-[#FF85A2] py-5 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#4A0E1C] active:scale-95"
+          disabled={isAdding}
+          className={`flex items-center justify-center gap-3 rounded-2xl py-5 text-sm font-semibold text-white shadow-md transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
+            selectedSize
+              ? "bg-[#FF85A2] hover:bg-[#4A0E1C]"
+              : "bg-[#FF85A2]/70 hover:bg-[#FF85A2]"
+          }`}
         >
           <CreditCard size={18} />
           Beli Sekarang

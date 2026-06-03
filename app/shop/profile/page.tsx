@@ -8,14 +8,9 @@ import {
   Save,
   MapPin,
   ArrowLeft,
-  Camera,
   Phone,
-  Sparkles,
-  ShieldCheck,
-  CreditCard,
   Loader2,
   Mail,
-  BadgeCheck,
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import Link from "next/link";
@@ -41,7 +36,7 @@ type ProfileForm = {
 function normalizePhone(value: string) {
   if (!value) return "";
 
-  let cleaned = value.replace(/[^\d+]/g, "").trim();
+  const cleaned = value.replace(/[^\d+]/g, "").trim();
 
   if (!cleaned) return "";
   if (cleaned.startsWith("+62")) return cleaned;
@@ -64,7 +59,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [user, setUser] = useState<any>(null);
-  const [profileExists, setProfileExists] = useState(false);
 
   const [initialData, setInitialData] = useState<ProfileForm>({
     fullName: "",
@@ -94,18 +88,19 @@ export default function ProfilePage() {
 
       setUser(user);
 
-      const { data: profile, error: profileError } = await supabase
-        .from("Profile")
-        .select("id, email, fullName, phoneE164, mainAddress, role, createdAt, updatedAt")
-        .eq("id", user.id)
-        .maybeSingle<ProfileRow>();
+      const res = await fetch("/api/me", {
+        method: "GET",
+        cache: "no-store",
+      });
 
-      if (profileError) {
-        console.error("loadProfile error:", profileError);
-        toast.error("Gagal memuat profil");
+      const result = await res.json();
+
+      if (!res.ok || !result.authenticated) {
+        router.push("/login");
+        return;
       }
 
-      setProfileExists(!!profile);
+      const profile = result.profile as ProfileRow | null;
 
       const fallbackName =
         profile?.fullName ||
@@ -129,7 +124,7 @@ export default function ProfilePage() {
       setFormData(nextData);
       setInitialData(nextData);
     } catch (error) {
-      console.error(error);
+      console.error("loadProfile error:", error);
       toast.error("Terjadi kesalahan saat memuat akun");
     } finally {
       setLoading(false);
@@ -138,6 +133,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const displayName = useMemo(() => {
@@ -169,6 +165,7 @@ export default function ProfilePage() {
       formData.mainAddress.trim(),
       user?.email || "",
     ];
+
     const filled = fields.filter(Boolean).length;
     return Math.round((filled / fields.length) * 100);
   }, [formData.fullName, normalizedPhone, formData.mainAddress, user]);
@@ -190,6 +187,7 @@ export default function ProfilePage() {
     }
 
     const digits = normalizedPhone.replace(/[^\d]/g, "");
+
     if (digits.length < 10) {
       toast.error("Nomor WhatsApp tidak valid");
       return false;
@@ -218,61 +216,41 @@ export default function ProfilePage() {
 
     startTransition(async () => {
       const payload = {
-        id: user.id,
-        email: user.email,
         fullName: formData.fullName.trim(),
         phoneE164: normalizedPhone,
         mainAddress: formData.mainAddress.trim(),
       };
 
       try {
-        let error = null;
+        const res = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
 
-        if (profileExists) {
-          const result = await supabase
-            .from("Profile")
-            .update({
-              fullName: payload.fullName,
-              phoneE164: payload.phoneE164,
-              mainAddress: payload.mainAddress,
-              email: payload.email,
-            })
-            .eq("id", user.id);
+        const result = await res.json();
 
-          error = result.error;
-        } else {
-          const result = await supabase.from("Profile").insert({
-            id: payload.id,
-            email: payload.email,
-            fullName: payload.fullName,
-            phoneE164: payload.phoneE164,
-            mainAddress: payload.mainAddress,
-            role: "USER",
-          });
-
-          error = result.error;
-        }
-
-        if (error) {
-          console.error("save profile error:", error);
-          toast.error(error.message || "Gagal memperbarui profil");
+        if (!res.ok) {
+          console.error("save profile error:", result);
+          toast.error(result.error || "Gagal memperbarui profil");
           return;
         }
 
         const updatedData: ProfileForm = {
-          fullName: payload.fullName,
-          phone: payload.phoneE164,
-          mainAddress: payload.mainAddress,
+          fullName: result.profile?.fullName ?? payload.fullName,
+          phone: result.profile?.phoneE164 ?? payload.phoneE164,
+          mainAddress: result.profile?.mainAddress ?? payload.mainAddress,
         };
 
         setFormData(updatedData);
         setInitialData(updatedData);
-        setProfileExists(true);
 
         toast.success("Profil berhasil diperbarui ✨");
         router.refresh();
       } catch (error) {
-        console.error(error);
+        console.error("save profile error:", error);
         toast.error("Terjadi kesalahan saat menyimpan profil");
       }
     });
@@ -314,7 +292,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-12 lg:gap-8">
-          <div className="space-y-4 lg:col-span-4 lg:space-y-6">
+          <div className="lg:col-span-4">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
@@ -323,30 +301,16 @@ export default function ProfilePage() {
               <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-[#FF85A2] to-[#FFB1C1] sm:h-24" />
 
               <div className="relative pt-6 sm:pt-8">
-                <div className="group relative mx-auto mb-4 h-24 w-24 sm:mb-6 sm:h-32 sm:w-32">
+                <div className="mx-auto mb-4 h-24 w-24 sm:mb-6 sm:h-32 sm:w-32">
                   <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-tr from-[#FF85A2] to-[#FFB1C1] text-white shadow-xl shadow-pink-200 ring-4 ring-white sm:ring-8">
                     <User size={40} strokeWidth={1.5} className="sm:hidden" />
                     <User size={56} strokeWidth={1.5} className="hidden sm:block" />
                   </div>
-
-                  <button
-                    type="button"
-                    className="absolute bottom-0 right-0 rounded-full bg-[#4A0E1C] p-2.5 text-white shadow-lg transition-transform hover:scale-110 active:scale-95 sm:p-3"
-                    aria-label="Ganti foto profil"
-                  >
-                    <Camera size={14} className="sm:hidden" />
-                    <Camera size={16} className="hidden sm:block" />
-                  </button>
                 </div>
 
                 <h2 className="text-xl font-black italic uppercase leading-tight tracking-tighter text-[#4A0E1C] sm:text-2xl">
                   {displayName}
                 </h2>
-
-                <div className="mt-2 flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-[#FF85A2] sm:mt-3 sm:text-[10px] sm:tracking-[0.25em]">
-                  <Sparkles size={11} />
-                  Gold Member
-                </div>
 
                 <div className="mt-5 space-y-3 rounded-[1.5rem] bg-[#FFF9FA] p-4 text-left sm:mt-6 sm:rounded-[2rem]">
                   <div className="flex items-start gap-3">
@@ -372,43 +336,9 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex items-start gap-3">
-                    <BadgeCheck size={16} className="mt-0.5 shrink-0 text-pink-300" />
-                    <div className="min-w-0">
-                      <div className="text-[9px] font-black uppercase tracking-[0.18em] text-gray-400 sm:text-[10px] sm:tracking-[0.2em]">
-                        Status
-                      </div>
-                      <div className="text-sm font-bold text-[#4A0E1C]">
-                        Akun Aktif
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </motion.div>
-
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="rounded-[1.5rem] border border-pink-50 bg-white p-4 text-center shadow-sm sm:rounded-[2rem] sm:p-5">
-                <ShieldCheck className="mx-auto mb-2 text-green-400" size={22} />
-                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">
-                  Akun Aman
-                </p>
-                <p className="mt-1.5 text-xs font-bold text-[#4A0E1C]">
-                  Terverifikasi
-                </p>
-              </div>
-
-              <div className="rounded-[1.5rem] border border-pink-50 bg-white p-4 text-center shadow-sm sm:rounded-[2rem] sm:p-5">
-                <CreditCard className="mx-auto mb-2 text-[#FF85A2]" size={22} />
-                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">
-                  Checkout
-                </p>
-                <p className="mt-1.5 text-xs font-bold text-[#4A0E1C]">
-                  Auto-fill Ready
-                </p>
-              </div>
-            </div>
           </div>
 
           <div className="lg:col-span-8">
