@@ -85,7 +85,7 @@ export default function Home() {
           />
 
           <LinkButton 
-            href="https://wa.me/081381911424" 
+            href="https://wa.me/6281381911424" 
             icon={<MessageCircle size={20} />} 
             label="WhatsApp Consulations" 
             sub="Consult via WhatsApp"
